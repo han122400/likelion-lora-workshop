@@ -1,0 +1,89 @@
+.gradient-explorer{width:100%;min-width:0}
+.gradient-main-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.gradient-chart-panel,.gradient-control-panel{min-width:0;border:1px solid #d6d8cf;border-radius:9px;padding:14px 18px}
+.gradient-chart-panel{background:#fafaf7}
+.gradient-chart-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.gradient-chart-heading h3{font-family:Georgia,'Times New Roman',serif;font-size:clamp(17px,1.6cqw,23px);font-weight:600;line-height:1.4}
+.gradient-chart-heading>span{font-size:clamp(10px,1cqw,14px);color:#727967}
+.gradient-chart-panel label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:9px;font-size:clamp(12px,1.15cqw,16px)}
+.gradient-chart-panel label>strong{font-size:22px;font-variant-numeric:tabular-nums;color:#ad460c}
+.gradient-chart-panel input{display:block;width:100%;height:24px;margin:3px 0 2px;accent-color:#cf5b16;cursor:pointer}
+.gradient-chart{display:block;width:100%;height:clamp(170px,17cqw,225px);overflow:visible}
+.gradient-chart text{font:16px 'Pretendard','Malgun Gothic',sans-serif;fill:#656e59}
+.gradient-chart .gradient-axis-label{font-size:18px;fill:#343b2b}
+.gradient-axis,.gradient-tick{stroke:#9ba38e;stroke-width:1.4;fill:none}
+.gradient-curve{fill:none;stroke:#eb7023;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.gradient-guide{stroke:#bc6839;stroke-width:1;stroke-dasharray:4 4}
+.gradient-dot{fill:#e86e21;stroke:#fff;stroke-width:2.5;transition:cx .22s ease,cy .22s ease}
+.gradient-readouts{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.gradient-readouts>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.gradient-readouts span{font-size:clamp(12px,1.1cqw,16px);color:#707767;line-height:1.5}
+.gradient-readouts strong{font-size:clamp(25px,2.6cqw,37px);line-height:1.15;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.gradient-direction{min-height:3.2em;font-size:clamp(12px,1.12cqw,16px);line-height:1.6;word-break:keep-all;margin-top:12px;color:#626a58}
+.gradient-update-rule{border-top:1px solid #e0e3d8;padding-top:10px;margin-top:10px}
+.gradient-update-rule>p{font-size:clamp(12px,1.1cqw,15px);line-height:1.5;color:#686f5f}
+.gradient-equation{display:flex;align-items:center;justify-content:center;gap:7px;font:clamp(20px,2cqw,28px)/1.3 Georgia,'Times New Roman',serif;margin:9px 0}
+.gradient-equation sub{font-size:.55em;vertical-align:-.2em}
+.gradient-fraction{display:inline-flex;flex-direction:column;text-align:center;font-size:.85em;font-style:italic;line-height:1.15}
+.gradient-fraction>span:first-child{border-bottom:1px solid currentColor;padding:0 4px 2px}
+.gradient-fraction>span:last-child{padding-top:2px}
+.gradient-next{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:clamp(12px,1.15cqw,16px);line-height:1.5}
+.gradient-next>strong{color:#ad460c;font-size:clamp(21px,2cqw,29px);font-variant-numeric:tabular-nums}
+.gradient-actions{display:flex;align-items:center;gap:10px;margin-top:11px}
+.gradient-step-button{flex:1;background:#b64c0e;color:#fff;border:1px solid #b64c0e;border-radius:6px;padding:10px 12px;font-size:clamp(12px,1.15cqw,16px);font-weight:700;line-height:1.4;cursor:pointer}
+.gradient-step-button:hover:not(:disabled){background:#993d09}
+.gradient-step-button:disabled{background:#e5e7de;color:#6f7766;border-color:#d6d8cf;cursor:default}
+.gradient-reset{display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid #cdd2c4;background:#fff;border-radius:6px;padding:10px;font-size:12px;line-height:1.4;cursor:pointer;flex-shrink:0;color:#626a58}
+.gradient-actions button:focus-visible{outline:2px solid #ab460d;outline-offset:3px}
+.gradient-role-strip{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.gradient-role-strip>li{display:flex;align-items:center;gap:9px;font-size:clamp(11px,1.05cqw,15px);line-height:1.5;word-break:keep-all}
+.gradient-role-strip strong{color:#a8430b;white-space:nowrap}
+.gradient-caveat{font-size:clamp(10px,.95cqw,13px);line-height:1.6;color:#747b6b;margin-top:9px;text-align:center;word-break:keep-all}
+@container(max-width:900px){
+ .gradient-main-grid{grid-template-columns:1fr;gap:14px}
+ .gradient-chart{height:235px}
+ .gradient-chart-panel,.gradient-control-panel{padding:17px 20px}
+ .gradient-chart-heading h3{font-size:20px}
+ .gradient-chart-heading>span{font-size:12px}
+ .gradient-chart-panel label,.gradient-readouts span,.gradient-direction,.gradient-update-rule>p,.gradient-next{font-size:14px}
+ .gradient-direction{min-height:0}
+ .gradient-readouts strong{font-size:30px}
+ .gradient-equation{font-size:25px}
+ .gradient-next>strong{font-size:26px}
+ .gradient-step-button{font-size:14px}
+ .gradient-role-strip>li{flex-direction:column;align-items:flex-start;gap:3px;font-size:12px}
+ .gradient-caveat{font-size:11px}
+}
+@container(max-width:450px){
+ .gradient-chart-panel,.gradient-control-panel{padding:15px 13px}
+ .gradient-chart-heading{gap:4px;align-items:flex-start;flex-direction:column}
+ .gradient-chart-panel label{font-size:13px}
+ .gradient-chart{height:auto;min-height:140px}
+ .gradient-chart text{font-size:28px}
+ .gradient-chart .gradient-axis-label{font-size:30px}
+ .gradient-readouts{gap:12px}
+ .gradient-readouts strong{font-size:27px}
+ .gradient-direction{font-size:13px}
+ .gradient-next{font-size:13px}
+ .gradient-actions{gap:7px}
+ .gradient-reset{font-size:11px;padding:10px 7px}
+ .gradient-role-strip{grid-template-columns:1fr;gap:7px}
+ .gradient-role-strip>li{flex-direction:row;gap:12px}
+ .gradient-role-strip strong{min-width:70px}
+}
+@media(min-width:761px) and (max-width:1100px){
+ .presentation-mode .slide-stage:has(.gradient-explorer){height:auto;min-height:calc(100dvh - 140px)}
+}
+@media(min-width:1101px) and (max-height:820px){
+ .presentation-mode .slide-stage:has(.gradient-explorer) .slide-body{padding-top:10px;padding-bottom:10px}
+ .presentation-mode .gradient-chart-panel,.presentation-mode .gradient-control-panel{padding:11px 16px}
+ .presentation-mode .gradient-chart{height:210px}
+ .presentation-mode .gradient-direction{margin-top:9px}
+ .presentation-mode .gradient-update-rule{padding-top:7px;margin-top:7px}
+ .presentation-mode .gradient-actions{margin-top:8px}
+ .presentation-mode .gradient-role-strip{margin-top:9px}
+}
+@media(min-width:1101px) and (max-height:740px){
+ .presentation-mode .slide-stage:has(.gradient-explorer){height:auto;min-height:calc(100dvh - 140px)}
+}
+@media(prefers-reduced-motion:reduce){.gradient-dot{transition:none}}

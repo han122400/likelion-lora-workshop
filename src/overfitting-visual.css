@@ -1,0 +1,55 @@
+.overfit-visual {
+  margin: 0;
+  width: 100%;
+}
+
+.overfit-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(18px, 3cqw, 42px);
+}
+
+.overfit-plot { min-width: 0; }
+.overfit-chart { display: block; width: 100%; max-height: 280px; overflow: visible; font-family: inherit; }
+.overfit-chart-mobile { display: none; }
+.overfit-axis, .overfit-axis-tip { fill: none; stroke: #909489; stroke-width: 1.5; }
+.overfit-caution-area { fill: #fff2e8; }
+.overfit-axis-label { fill: #62665c; font-size: 19px; font-weight: 500; }
+.overfit-region-label { fill: #9a4a1d; font-size: 18px; font-weight: 600; }
+.overfit-train-line { fill: none; stroke: #5f675c; stroke-width: 4; stroke-dasharray: 9 7; stroke-linecap: round; }
+.overfit-validation-line { fill: none; stroke: #d65a15; stroke-width: 4; stroke-linecap: round; }
+.overfit-validation-dot { fill: #d65a15; }
+.overfit-direct-label { font-size: 21px; font-weight: 700; }
+.overfit-validation-label { fill: #b3460c; }
+.overfit-train-label { fill: #535c50; }
+
+.overfit-explanation { display: flex; flex-direction: column; gap: clamp(18px, 2cqw, 28px); }
+.overfit-observation { display: flex; align-items: flex-start; gap: 13px; }
+.overfit-observation > svg { flex: 0 0 auto; width: clamp(22px, 2.5cqw, 32px); height: clamp(22px, 2.5cqw, 32px); color: #5f675c; stroke-width: 1.7; }
+.overfit-observation h3 { font-size: clamp(16px, 1.9cqw, 26px); line-height: 1.4; letter-spacing: -.5px; word-break: keep-all; }
+.overfit-observation p { margin-top: 7px; font-size: clamp(13px, 1.45cqw, 20px); line-height: 1.65; color: #6b7064; word-break: keep-all; }
+.overfit-warning > svg, .overfit-warning h3 { color: #b3460c; }
+.overfit-action { display: flex; align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid #dadcd4; font-size: clamp(13px, 1.45cqw, 20px); line-height: 1.5; font-weight: 700; word-break: keep-all; }
+.overfit-action svg { flex-shrink: 0; width: 20px; height: 20px; color: #d65a15; }
+.overfit-caption { display: flex; justify-content: space-between; gap: 16px; margin-top: 15px; color: #787c70; font-size: clamp(10px, 1.1cqw, 14px); line-height: 1.6; word-break: keep-all; }
+
+@container (max-width: 680px) {
+  .overfit-body { grid-template-columns: 1fr; gap: 18px; }
+  .overfit-chart-wide { display: none; }
+  .overfit-chart-mobile { display: block; max-height: 235px; }
+  .overfit-chart-mobile .overfit-direct-label { font-size: 19px; }
+  .overfit-explanation { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .overfit-observation { gap: 8px; }
+  .overfit-observation > svg { width: 20px; height: 20px; }
+  .overfit-observation h3 { font-size: 13px; line-height: 1.5; }
+  .overfit-observation p { font-size: 11px; margin-top: 5px; line-height: 1.7; }
+  .overfit-observation p br { display: none; }
+  .overfit-action { grid-column: 1 / -1; padding-top: 12px; font-size: 12px; }
+  .overfit-caption { flex-direction: column; gap: 2px; margin-top: 12px; font-size: 10px; }
+}
+
+@media print {
+  .overfit-caution-area { fill: #f3f1ec; }
+  .overfit-chart { break-inside: avoid; }
+}

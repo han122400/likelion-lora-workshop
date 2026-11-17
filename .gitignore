@@ -1,0 +1,16 @@
+# 의존성·빌드 결과 (npm ci / npm run build로 다시 만듦)
+node_modules/
+dist/
+
+# Python 캐시·가상환경
+__pycache__/
+.pytest_cache/
+.venv/
+
+# 실습 실행 결과(모델 어댑터·로그)
+outputs/
+
+# 로컬 도구 설정
+.claude/
+.DS_Store
+Thumbs.db

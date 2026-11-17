@@ -1,0 +1,77 @@
+{
+  "title": "웹 실습 가이드 입력",
+  "note": "2단계(기본 모델)와 4단계(LoRA 모델)에 같은 입력을 넣고 결과를 비교합니다. 모두 학습에 쓰지 않은 validation 문항입니다.",
+  "inputs": [
+    {
+      "no": 1,
+      "row_id": "V03-Q1",
+      "question": "14기 총무는 누구야?",
+      "document_id": "V03",
+      "document": "[V03] 14기 총무\n멋사 중부대 14기 총무는 윤주혁이다.",
+      "expected": {
+        "answer": "윤주혁",
+        "evidence": [
+          "V03"
+        ],
+        "status": "answered"
+      },
+      "look_for": "처음 보는 운영진 정보를 문서에서 정확히 읽어 내는지"
+    },
+    {
+      "no": 2,
+      "row_id": "V03-U1",
+      "question": "총무는 몇 학년이야?",
+      "document_id": "V03",
+      "document": "[V03] 14기 총무\n멋사 중부대 14기 총무는 윤주혁이다.",
+      "expected": {
+        "answer": null,
+        "evidence": [],
+        "status": "insufficient_information"
+      },
+      "look_for": "문서에 없는 정보(학년)를 추측하지 않고 답을 보류하는지"
+    },
+    {
+      "no": 3,
+      "row_id": "V01-Q1",
+      "question": "해커톤 준비 캠프 날짜는?",
+      "document_id": "V01",
+      "document": "[V01] 해커톤 준비 캠프\n겨울 해커톤 준비 캠프는 2027년 1월 9일 13시에 공학관 101호에서 열린다.",
+      "expected": {
+        "answer": "2027-01-09",
+        "evidence": [
+          "V01"
+        ],
+        "status": "answered"
+      },
+      "look_for": "문서의 시각(13시)은 빼고 날짜만 짧게 답하는지"
+    },
+    {
+      "no": 4,
+      "row_id": "V02-Q1",
+      "question": "동아리방 이용 시간은?",
+      "document_id": "V02",
+      "document": "[V02] 동아리방\n동아리방은 평일 9시부터 22시까지 이용할 수 있다. 출입 카드를 잃어버리면 운영진에게 바로 알린다.",
+      "expected": {
+        "answer": "평일 9시~22시",
+        "evidence": [
+          "V02"
+        ],
+        "status": "answered"
+      },
+      "look_for": "짧은 값과 근거 ID 형식(V02만)을 지키는지"
+    },
+    {
+      "no": 5,
+      "row_id": "V01-U1",
+      "question": "준비 캠프 참가자에게 식비를 지원해?",
+      "document_id": "V01",
+      "document": "[V01] 해커톤 준비 캠프\n겨울 해커톤 준비 캠프는 2027년 1월 9일 13시에 공학관 101호에서 열린다.",
+      "expected": {
+        "answer": null,
+        "evidence": [],
+        "status": "insufficient_information"
+      },
+      "look_for": "예/아니요 질문이라도 문서에 없으면 답을 보류하는지"
+    }
+  ]
+}

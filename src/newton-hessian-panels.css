@@ -1,0 +1,126 @@
+.nh-panel{width:100%;min-width:0;color:#303629}
+.nh-newton{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:clamp(22px,3cqw,42px);align-items:center}
+.nh-newton-chart{min-width:0;margin:0;padding:10px 15px 4px;border:1px solid #d6d8cf;border-radius:8px;background:#fafaf7}
+.nh-newton-chart figcaption{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font:600 clamp(17px,1.7cqw,23px)/1.4 Georgia,'Times New Roman',serif}
+.nh-newton-chart figcaption>span{font:400 12px/1.5 'Pretendard','Malgun Gothic',sans-serif;color:#737969}
+.nh-newton-chart sup{font-size:.6em}
+.nh-newton-chart figcaption>b{font-weight:600;white-space:nowrap}
+.nh-newton-chart svg{display:block;width:100%;height:190px;overflow:visible;margin-top:3px}
+.nh-newton-chart svg text{font:14px 'Pretendard','Malgun Gothic',sans-serif;fill:#69725d}
+.nh-newton-chart svg .nh-chart-axis-label{font-size:15px;fill:#3e4733}
+.nh-newton-chart svg .nh-chart-point-label{fill:#a8430b;font-size:14px;font-weight:600}
+.nh-chart-axis{fill:none;stroke:#9ba38e;stroke-width:1.2}
+.nh-chart-curve{fill:none;stroke:#e56b22;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.nh-chart-jump{fill:none;stroke:#a8430b;stroke-width:1.5;stroke-dasharray:5 4}
+.nh-chart-start{fill:#7f8971;stroke:#fff;stroke-width:2}
+.nh-chart-end{fill:#d95d17;stroke:#fff;stroke-width:2}
+.nh-newton-explanation{min-width:0}
+.nh-derivative-roles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0}
+.nh-derivative-roles>div{padding:9px 12px;border-left:3px solid #d8a17c;background:#fffaf6}
+.nh-derivative-roles dt{font-size:clamp(13px,1.2cqw,17px);font-weight:800;line-height:1.5;color:#a8430b}
+.nh-derivative-roles dd{font-size:clamp(12px,1.05cqw,15px);line-height:1.5;margin:2px 0 0;color:#626958;word-break:keep-all}
+.nh-newton-formula{display:flex;align-items:center;justify-content:center;gap:13px;font:clamp(24px,2.5cqw,35px)/1.2 Georgia,'Times New Roman',serif;margin:12px 0}
+.nh-newton-formula sub{font-size:.5em;vertical-align:-.2em}
+.nh-fraction{display:inline-flex;flex-direction:column;align-items:stretch;text-align:center;line-height:1.1;font-family:Georgia,'Times New Roman',serif}
+.nh-fraction>span:first-child{padding:0 5px 3px;border-bottom:1px solid currentColor}
+.nh-fraction>span:last-child{padding:3px 5px 0}
+.nh-newton-calculation{display:flex;justify-content:space-between;align-items:center;gap:15px;background:#fff2e9;border:1px solid #efb18a;border-radius:7px;padding:9px 15px}
+.nh-newton-calculation>p{font-size:clamp(12px,1.1cqw,16px);line-height:1.6;word-break:keep-all}
+.nh-newton-calculation>p>strong{font-weight:700;color:#a8430b;white-space:nowrap}
+.nh-newton-calculation>div{display:flex;align-items:center;gap:8px;font:clamp(22px,2.2cqw,31px)/1.2 Georgia,'Times New Roman',serif;white-space:nowrap}
+.nh-newton-calculation .nh-fraction{font-size:.85em}
+.nh-newton-calculation>div>strong{font-weight:700;color:#a8430b}
+.nh-newton-note{font-size:clamp(11px,1cqw,14px);line-height:1.6;color:#737969;margin-top:8px;word-break:keep-all}
+.nh-hessian-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(24px,3.5cqw,48px);align-items:center}
+.nh-hessian-definition{min-width:0}
+.nh-definition{font-size:clamp(14px,1.3cqw,18px);line-height:1.6;word-break:keep-all}
+.nh-definition>strong{font-weight:700;color:#a8430b}
+.nh-hessian-equation{display:flex;align-items:center;justify-content:center;gap:18px;margin:13px 0;font:clamp(26px,2.7cqw,38px)/1.2 Georgia,'Times New Roman',serif}
+.nh-hessian-matrix{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:12px 21px;padding:6px 18px;font-size:clamp(18px,1.8cqw,25px)}
+.nh-hessian-matrix::before,.nh-hessian-matrix::after{content:'';position:absolute;top:0;bottom:0;width:8px;border-top:2px solid #7f8971;border-bottom:2px solid #7f8971}
+.nh-hessian-matrix::before{left:0;border-left:2px solid #7f8971}
+.nh-hessian-matrix::after{right:0;border-right:2px solid #7f8971}
+.nh-matrix-dimension{text-align:center;font-size:clamp(12px,1.1cqw,16px);line-height:1.5;color:#626958}
+.nh-matrix-dimension>strong{color:#a8430b;font-weight:700}
+.nh-hessian-cost{min-width:0;border:1px solid #efb18a;border-radius:8px;background:#fff2e9;padding:15px 19px}
+.nh-cost-label{font-size:clamp(11px,1cqw,14px);line-height:1.5;color:#8b6c56;word-break:keep-all}
+.nh-cost-comparison{display:grid;grid-template-columns:1fr 24px 1fr;gap:14px;align-items:center;margin:11px 0}
+.nh-cost-comparison>div{min-width:0;display:flex;flex-direction:column;gap:3px}
+.nh-cost-comparison span{font-size:clamp(12px,1.1cqw,16px);line-height:1.5;color:#6c7061}
+.nh-cost-comparison strong{font-size:clamp(25px,2.7cqw,38px);line-height:1.2;font-weight:800;color:#a8430b;white-space:nowrap;font-variant-numeric:tabular-nums}
+.nh-cost-comparison sup{font-size:.55em;vertical-align:super}
+.nh-cost-comparison>svg{width:23px;height:23px;color:#a8430b;stroke-width:1.5}
+.nh-cost-conclusion{font-size:clamp(13px,1.15cqw,17px);line-height:1.6;word-break:keep-all}
+.nh-cost-conclusion strong{font-weight:700}
+.nh-adamw-note{border-top:1px solid #e6bc9f;padding-top:9px;margin-top:9px;font-size:clamp(12px,1.05cqw,15px);line-height:1.6;word-break:keep-all}
+.nh-adamw-note>strong{color:#a8430b;font-weight:700}
+.nh-hessian-caveat{font-size:clamp(11px,1cqw,14px);line-height:1.6;color:#737969;margin-top:12px;word-break:keep-all}
+@container(max-width:800px){
+ .nh-newton,.nh-hessian-grid{grid-template-columns:1fr;gap:20px}
+ .nh-newton-chart{padding:13px 17px 7px;max-width:520px;width:100%;justify-self:center}
+ .nh-newton-chart figcaption{font-size:21px}
+ .nh-newton-chart svg{height:210px}
+ .nh-derivative-roles dt{font-size:15px}
+ .nh-derivative-roles dd{font-size:13px}
+ .nh-newton-formula{font-size:30px;margin:17px 0}
+ .nh-newton-calculation{padding:13px 16px}
+ .nh-newton-calculation>p{font-size:14px}
+ .nh-newton-calculation>div{font-size:28px}
+ .nh-newton-note,.nh-hessian-caveat{font-size:12px;line-height:1.7}
+ .nh-definition{font-size:16px}
+ .nh-hessian-equation{font-size:33px;margin:17px 0}
+ .nh-hessian-matrix{font-size:24px}
+ .nh-matrix-dimension{font-size:14px}
+ .nh-hessian-cost{padding:18px 21px}
+ .nh-cost-label{font-size:12px}
+ .nh-cost-comparison strong{font-size:34px}
+ .nh-cost-comparison span{font-size:14px}
+ .nh-cost-conclusion{font-size:15px}
+ .nh-adamw-note{font-size:14px}
+}
+@container(max-width:450px){
+ .nh-newton-chart{padding:12px 9px 5px}
+ .nh-newton-chart figcaption{font-size:19px;gap:5px}
+ .nh-newton-chart figcaption>span{font-size:11px}
+ .nh-newton-chart svg{height:auto;min-height:135px}
+ .nh-newton-chart svg text{font-size:17px}
+ .nh-newton-chart svg .nh-chart-axis-label,.nh-newton-chart svg .nh-chart-point-label{font-size:17px}
+ .nh-derivative-roles{gap:9px}
+ .nh-derivative-roles>div{padding:8px 10px}
+ .nh-derivative-roles dt{font-size:13px}
+ .nh-derivative-roles dd{font-size:12px}
+ .nh-newton-formula{font-size:28px;gap:10px}
+ .nh-newton-calculation{flex-direction:column;align-items:flex-start;gap:10px;padding:12px}
+ .nh-newton-calculation>p{font-size:13px}
+ .nh-newton-calculation>div{align-self:center;font-size:28px}
+ .nh-newton-note{font-size:12px}
+ .nh-definition{font-size:14px}
+ .nh-hessian-equation{font-size:28px;gap:12px}
+ .nh-hessian-matrix{font-size:21px;column-gap:15px;padding-left:14px;padding-right:14px}
+ .nh-matrix-dimension{font-size:13px}
+ .nh-hessian-cost{padding:15px 13px}
+ .nh-cost-comparison{gap:7px;grid-template-columns:1fr 20px 1fr}
+ .nh-cost-comparison strong{font-size:28px}
+ .nh-cost-comparison>svg{width:19px;height:19px}
+ .nh-cost-comparison span{font-size:13px}
+ .nh-cost-conclusion,.nh-adamw-note{font-size:13px}
+ .nh-hessian-caveat{font-size:12px}
+}
+@media (min-width:1101px) and (max-height:820px){
+ .presentation-mode .nh-newton-chart svg{height:170px}
+ .presentation-mode .nh-newton-chart figcaption{font-size:21px}
+ .presentation-mode .nh-derivative-roles>div{padding:6px 10px}
+ .presentation-mode .nh-derivative-roles dt{font-size:14px}
+ .presentation-mode .nh-derivative-roles dd{font-size:12px}
+ .presentation-mode .nh-newton-formula{font-size:27px;margin:8px 0}
+ .presentation-mode .nh-newton-calculation{padding:7px 12px}
+ .presentation-mode .nh-newton-calculation>div{font-size:24px}
+ .presentation-mode .nh-newton-note{font-size:12px;line-height:1.5}
+ .presentation-mode .nh-hessian-equation{font-size:29px;margin:9px 0}
+ .presentation-mode .nh-hessian-matrix{font-size:21px;gap:9px 18px}
+ .presentation-mode .nh-hessian-cost{padding:12px 17px}
+ .presentation-mode .nh-cost-comparison{margin:8px 0}
+ .presentation-mode .nh-cost-comparison strong{font-size:31px}
+ .presentation-mode .nh-cost-conclusion{font-size:14px;line-height:1.5}
+ .presentation-mode .nh-hessian-caveat{font-size:12px;line-height:1.5;margin-top:9px}
+}

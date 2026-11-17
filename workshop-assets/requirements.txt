@@ -1,0 +1,15 @@
+# Python 3.11 / 3.12 권장. CUDA 지원 PyTorch 설치는 README.ko.md 참고.
+# GPU 통합 실행을 검증한 lockfile은 아닙니다. 실행 버전은 outputs/.../config.json에 기록됩니다.
+unsloth
+unsloth_zoo
+transformers>=5.0,<6
+trl>=0.24,<2
+datasets>=3,<5
+peft>=0.18,<1
+accelerate>=1,<2
+torch>=2.5
+torchvision
+sentencepiece
+protobuf
+Pillow
+
