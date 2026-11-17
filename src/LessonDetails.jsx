@@ -47,14 +47,14 @@ function RankExplorer() {
 
 export default function LessonDetails({slide,index,onToast,onResources}) {
   const note=slide.learnerNote || slide.lead;
-  const isPractice=slide.chapter===6;
+  const isPractice=slide.chapter===6 && slide.id!=='s10';
   return <div className="lesson-details">
     <section className="reading-panel">
       <div className="lesson-explanation"><h2>{index===0?'이번 시간에 할 일':'조금 더 이해하기'}</h2><p>{note}</p><ul>{slide.bullets.map(b=><li key={b}>{b}</li>)}</ul></div>
       <aside className="reflection"><h2>핵심 질문</h2><span className="question-number">0{slide.chapter}</span><p>{questions[slide.chapter]}</p><details><summary>기억할 문장 <ChevronDown size={16}/></summary><p>{slide.takeAway}</p></details></aside>
     </section>
     {slide.id==='s05'&&<RankExplorer/>}
-    {['s10','s16'].includes(slide.id)&&<section className="example-section"><div><h3>정답 예시의 출력 형식</h3><p>제공 데이터의 멋사 중부대 14기 운영 안내 FAQ 예시입니다.<br/>모델이 실제로 생성한 결과가 아닙니다.</p><p className="document-excerpt">[T01] 멋사 중부대 14기 정규 세미나는 매주 화요일 오후 7시에 열린다.</p><strong>질문: 정규 세미나는 무슨 요일에 열려?</strong></div><CopyCode label="학습 데이터의 정답 JSON" code={outputExample} onToast={onToast}/></section>}
+    {slide.id==='s16'&&<section className="example-section"><div><h3>정답 예시의 출력 형식</h3><p>제공 데이터의 멋사 중부대 14기 운영 안내 FAQ 예시입니다.<br/>모델이 실제로 생성한 결과가 아닙니다.</p><p className="document-excerpt">[T01] 멋사 중부대 14기 정규 세미나는 매주 화요일 오후 7시에 열린다.</p><strong>질문: 정규 세미나는 무슨 요일에 열려?</strong></div><CopyCode label="학습 데이터의 정답 JSON" code={outputExample} onToast={onToast}/></section>}
     {slide.id==='s13'&&<CopyCode label="train.py · 학생이 바꿀 값" code={configCode} onToast={onToast}/>}
     {isPractice&&<section className="practice-details"><div className="section-title"><div><h2>Colab에서 따라하기</h2><p>Colab 새 노트북을 열고, 아래 코드 블록을 하나씩 복사해 새 코드 셀에 붙여 넣고 실행하세요.</p></div><div className="download-bar"><a className="button primary" href="/downloads/lora-workshop.zip" download="lora-workshop.zip"><Download size={17}/> 실습 파일 ZIP</a><a className="button" href={COLAB_URL} target="_blank" rel="noreferrer">Colab 열기 <ArrowUpRight size={16}/></a></div></div>
       {slide.id==='s19'&&<div className="environment-note"><strong>시작 전에</strong><p>① 실습 파일 ZIP 다운로드 ② Colab 열기 → 새 노트북 ③ 메뉴 런타임 → 런타임 유형 변경 → T4 GPU ④ 아래 코드를 순서대로 새 코드 셀(+ 코드)에 붙여 넣고 Ctrl+Enter로 실행. 1-2를 실행하면 나오는 ‘파일 선택’에서 lora-workshop.zip을 고르세요. 1-3 설치가 끝나면 런타임 → 세션 다시 시작을 누른 뒤 1-4부터 이어서 실행합니다. 무료 GPU 배정은 보장되지 않으므로, GPU를 받지 못하면 조원의 화면으로 함께 진행하세요.</p></div>}

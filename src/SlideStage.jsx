@@ -9,6 +9,7 @@ import TrainingExample from './TrainingExample.jsx';
 import OverfittingVisual from './OverfittingVisual.jsx';
 import OptimizationRoles from './OptimizationRoles.jsx';
 import SftVisual from './SftVisual.jsx';
+import PracticeGoal from './PracticeGoal.jsx';
 
 export function Matrix({ compact = false, rank = 2 }) {
   return <div className={`matrix-composition ${compact ? 'compact' : ''}`} role="img" aria-label="고정된 가중치 W에 작은 행렬 B와 A의 곱을 더하는 LoRA 구조">
@@ -66,6 +67,7 @@ function SlideBody({slide}) {
       <p className="lora-scale-note">스케일을 생략한 개념식입니다.<br className="lora-note-break"/> 실제로는 <span>(α/r)BA</span>를 더합니다.</p>
     </div>;
     case 's06': return <TrainingExample/>;
+    case 's10': return <PracticeGoal/>;
     case 's11': return <ForwardBackwardVisual/>;
     case 's12': return <GradientExplorer/>;
     case 's12-meaning': return <LossFormulaMeaning table={slide.table}/>;

@@ -4,12 +4,14 @@
 이 파일은 두 가지 방법으로 씁니다.
 
 1) Colab 노트북(lora_workshop.ipynb) - 수업 기본 경로
-   `import train as lab`으로 불러온 뒤, 단계마다 아래 함수를 셀에서 하나씩 호출합니다.
-     2단계  load_base_model() → ask() / ask_guide() / evaluate()      기본 모델에 질문
+   `import train as lab`으로 불러온 뒤, 단계마다 아래 흐름을 셀에서 실행합니다.
+     2단계  load_base_model() → evaluate() → 가이드 5개 결과 선택    기본 모델 질문·평가
      3단계  add_lora() → train_lora()                                  LoRA 학습
-     4단계  ask() / ask_guide() / evaluate()                           LoRA 모델에 같은 질문
+     4단계  evaluate() → 가이드 5개 결과 선택                       학습한 모델로 같은 문항 평가
      5단계  summarize() / evaluate(split="test") / save_session()    결과 비교·마지막 확인·저장
      6단계  make_custom_task() → run_custom_experiment() → ask_plain()  과제: 나만의 출력 학습
+   2·4단계는 검증 10문항에 한 번씩 답하고, 그 결과에서 가이드 5개를 골라 다시 보여 줍니다.
+   선택 셀의 직접 질문은 ask()를 씁니다. mode="base"/"lora"는 결과 이름표이며 모델을 바꾸지 않습니다.
 
 2) 명령줄(CMD·터미널) - 로컬 GPU가 있는 경우
    python train.py            학습 전 평가 → LoRA 학습 → 학습 후 평가를 한 번에 실행
@@ -24,7 +26,7 @@ from __future__ import annotations
 #   - 노트북에서는 6-2 셀의 입력 칸으로 바꿉니다(3단계는 기본값 그대로).
 #   - 명령줄에서는 python train.py --lr 1e-4 / --epochs 4 / --rank 16 처럼 바꿉니다.
 # ════════════════════════════════════════════════════════════════════
-LEARNING_RATE = 2e-4   # 학습률: 한 번 업데이트할 때 LoRA 가중치를 움직이는 크기
+LEARNING_RATE = 2e-4   # 학습률: 업데이트 크기의 기준값(실제 이동량은 기울기·옵티마이저에도 좌우됨)
 EPOCHS = 2             # 학습 데이터 전체를 몇 바퀴 반복해서 볼지
 LORA_RANK = 8          # LoRA 행렬 A·B의 폭(rank). 클수록 학습할 파라미터가 많아짐
 
@@ -46,7 +48,7 @@ from datetime import datetime
 ROOT = Path(__file__).resolve().parent           # 이 파일이 있는 폴더(실습 폴더)
 OUTPUTS = ROOT / "outputs"                        # 실행 결과가 쌓이는 폴더
 MODEL_ID = "Qwen/Qwen3.5-2B"                      # 기본 모델(Hugging Face에서 내려받음)
-SEED = 3407                                       # 난수 시드: 같은 설정이면 같은 결과가 나오도록 고정
+SEED = 3407                                       # 난수 시드: 실행 간 무작위 차이를 줄임(환경까지 달라도 같다는 보장은 아님)
 MAX_SEQUENCE_LENGTH = 1024                        # 입력+정답의 최대 토큰 수(넘으면 자르지 않고 중단)
 MAX_NEW_TOKENS = 160                              # 답변으로 생성할 최대 토큰 수
 BATCH_SIZE = 1                                    # GPU에 한 번에 올리는 예시 수
@@ -97,6 +99,7 @@ def load_data() -> tuple[dict, dict]:
 
     검사 항목: 필수 필드, 중복 ID·질문, 분할 사이 누수(같은 문서가 train과 test에 동시에 있는지),
     document 내용이 원문과 같은지, 정답 JSON 형식, 정보 부족 예시의 정답이 '답 보류'인지.
+    반환값은 문서 ID로 찾는 docs와, 분할 이름으로 예시 목록을 찾는 splits입니다.
     """
     knowledge = json.loads((ROOT / "knowledge.json").read_text(encoding="utf-8"))
     docs = {doc["id"]: doc for doc in knowledge["documents"]}
@@ -116,6 +119,7 @@ def load_data() -> tuple[dict, dict]:
                 raise ValueError(f"중복 ID 또는 질문: {row['id']}")
             ids.add(row["id"])
             questions.add(q)
+            # 같은 자료에서 만든 예시가 학습·평가에 나뉘어 들어가면 평가가 쉬워질 수 있습니다.
             owner = group_owner.setdefault(row["group_id"], split)
             if owner != split:
                 raise ValueError(f"분할 사이 group_id 누수: {row['group_id']}")
@@ -375,7 +379,10 @@ def prompt_text(tokenizer, question: str, document: str) -> str:
 
 
 def free_gpu() -> None:
-    """지운 모델이 쓰던 GPU 메모리를 돌려받습니다. 노트북에서는 model = None 다음에 호출하세요."""
+    """참조가 없어진 객체를 정리하고, PyTorch가 예약해 둔 미사용 GPU 캐시를 비웁니다.
+
+    살아 있는 model·텐서의 메모리는 해제하지 않습니다. 모델을 내릴 때는 참조부터 없애야 합니다.
+    """
     gc.collect()
     try:
         import torch
@@ -396,6 +403,7 @@ def gpu_memory() -> dict:
 def load_base_model():
     """[2단계] 기본 모델(LoRA 없음)을 내려받아 GPU에 올립니다.
 
+    model은 다음 토큰의 확률을 계산하고, tokenizer는 글과 토큰 ID 사이의 변환을 맡습니다.
     돌려주는 값: (model, tokenizer, info)  info에는 GPU 이름·정밀도·파라미터 수·메모리 사용량이 들어 있습니다.
     """
     torch, gpu_info, bf16 = check_environment()
@@ -412,6 +420,7 @@ def load_base_model():
     if not getattr(tokenizer, "eos_token", None):
         raise RuntimeError(f"종료 토큰을 찾지 못했습니다. {MODEL_ID} 토크나이저를 확인하세요.")
     if tokenizer.pad_token_id is None:
+        # 길이를 맞출 빈칸용 토큰이 없으면 종료 토큰 ID를 재사용합니다.
         tokenizer.pad_token = tokenizer.eos_token
     check_template(tokenizer)
     FastLanguageModel.for_inference(model)  # 답변 생성(추론) 모드로 전환
@@ -427,9 +436,15 @@ def load_base_model():
 # ════════════════════════════════════════════════════════════════════
 def generate_text(model, tokenizer, torch, text: str, max_new_tokens: int = MAX_NEW_TOKENS) -> dict:
     """채팅 템플릿으로 만든 글(text)을 모델에 넣고 이어지는 답변을 생성합니다.
-    매번 같은 답이 나오도록 무작위성 없이(greedy) 생성합니다."""
+
+    매 위치에서 확률이 가장 높은 토큰을 고르는 greedy 방식으로 샘플링 변동을 줄입니다.
+    정답 여부나 서로 다른 GPU·패키지 환경에서의 완전한 재현까지 보장하는 설정은 아닙니다.
+    반환값에는 답변 원문, 생성 토큰 수, 길이 한도 도달 여부, 생성 시간이 들어 있습니다.
+    """
+    # 글을 모델이 읽을 토큰 ID로 바꿉니다. 템플릿에 이미 있는 특수 토큰은 다시 붙이지 않습니다.
     inputs = tokenizer(text, return_tensors="pt", add_special_tokens=False).to(model.device)
-    n_input = inputs["input_ids"].shape[-1]
+    n_input = inputs["input_ids"].shape[-1]  # 글자 수가 아닌 입력 토큰 수(한국어 한 단어도 여러 토큰일 수 있음)
+    # 입력과 앞으로 생성할 답변이 함께 들어갈 공간을 확인합니다.
     if n_input + max_new_tokens > MAX_SEQUENCE_LENGTH:
         raise ValueError(f"평가 입력이 너무 깁니다({n_input} 토큰). 입력을 자동 절단하지 않습니다.")
     start = time.perf_counter()
@@ -438,7 +453,7 @@ def generate_text(model, tokenizer, torch, text: str, max_new_tokens: int = MAX_
                                    max_new_tokens=max_new_tokens, use_cache=True,
                                    pad_token_id=tokenizer.pad_token_id,
                                    eos_token_id=tokenizer.eos_token_id)
-    tokens = generated[0, n_input:]  # 입력 뒤에 새로 생성된 부분만
+    tokens = generated[0, n_input:]  # generate 결과는 '입력+답변'이므로 입력 길이만큼 건너뛰어 답변만 남김
     return {"raw_output": tokenizer.decode(tokens, skip_special_tokens=True).strip(),
             "generated_tokens": len(tokens), "hit_token_limit": len(tokens) >= max_new_tokens,
             "generation_seconds": time.perf_counter() - start}
@@ -455,6 +470,7 @@ def ask(model, tokenizer, question: str, document_id: str | None = None,
 
     document_id: 'V03'처럼 데이터의 문서 ID. '직접 입력'이면 document_text를 문서로 씁니다.
     데이터셋에 있는 (질문, 문서) 조합이면 정답과 비교해 채점하고, 아니면 출력만 보여 줍니다.
+    mode는 표에 붙일 이름표입니다. 실제 답변은 전달받은 model의 현재 가중치로 생성합니다.
     """
     import torch
     docs, splits = load_data()
@@ -465,6 +481,7 @@ def ask(model, tokenizer, question: str, document_id: str | None = None,
     result = {"mode": mode, "question": question, "document": document, "context_ids": context_ids}
     result.update(generate_raw(model, tokenizer, torch, question, document))
     result["parsed"] = parse_output(result["raw_output"])
+    # 모범 답변은 모델 입력에 넣지 않고, 생성이 끝난 뒤 채점할 때만 찾습니다.
     split, row = find_row(question, document_id, splits) if context_ids else (None, None)
     result.update(dataset_split=split, id=row["id"] if row else None, expected=row["expected"] if row else None)
     if row:
@@ -475,13 +492,13 @@ def ask(model, tokenizer, question: str, document_id: str | None = None,
 
 
 def ask_guide(model, tokenizer, mode: str = "base") -> list[dict]:
-    """[2·4단계] 웹 가이드의 입력 전체를 차례로 질문합니다."""
+    """가이드만 따로 질문할 때 쓰는 함수입니다. 통합 노트북은 evaluate 결과를 재사용합니다."""
     return [ask(model, tokenizer, g["question"], g["document_id"], mode=mode) for g in load_guide()]
 
 
 def evaluate_model(model, tokenizer, torch, rows, mode, results, out=None, verbose=True):
     """예시 목록 전체를 같은 방식으로 질문하고 채점해 results에 추가합니다. out이 있으면 바로 저장합니다."""
-    model.eval()
+    model.eval()  # 평가 동작으로 전환합니다. 아래 생성 과정에서는 역전파·가중치 업데이트를 하지 않습니다.
     for row in rows:
         try:
             generated = generate_raw(model, tokenizer, torch, row["question"], row["document"])
@@ -499,7 +516,11 @@ def evaluate_model(model, tokenizer, torch, rows, mode, results, out=None, verbo
 
 
 def evaluate(model, tokenizer, split: str = "validation", mode: str = "base") -> list[dict]:
-    """[2·4단계] validation(또는 test) 전체를 채점합니다. 결과는 질문별 목록입니다."""
+    """[2·4단계] validation(또는 test) 전체에 답하고, 원문 출력·채점 결과를 문항별 목록으로 돌려줍니다.
+
+    데이터를 다시 학습하는 함수가 아닙니다. mode는 결과 구분용이며 LoRA를 붙이거나 떼지 않습니다.
+    노트북은 이 목록의 id를 가이드의 row_id와 맞춰, 같은 답변을 카드와 표에 보여 줍니다.
+    """
     import torch
     _, splits = load_data()
     results: list[dict] = []
@@ -513,7 +534,7 @@ def evaluate(model, tokenizer, split: str = "validation", mode: str = "base") ->
 def add_lora(model, rank: int = LORA_RANK):
     """[3단계] 기본 모델 가중치는 고정하고, 지정한 층 옆에 학습할 작은 행렬 A·B를 붙입니다.
 
-    PEFT는 B를 0으로 초기화하므로, 붙인 직후의 출력은 기본 모델과 같습니다.
+    PEFT는 B를 0으로 초기화하므로, 처음에는 원본에 더하는 보정 BA가 0입니다.
     돌려주는 값: (LoRA가 붙은 model, 정보 dict: 학습 파라미터 수·전체 파라미터 수 등)
     """
     from unsloth import FastLanguageModel
@@ -527,6 +548,7 @@ def add_lora(model, rank: int = LORA_RANK):
         use_gradient_checkpointing="unsloth",        # 활성값을 다시 계산해 GPU 메모리 절약
         random_state=SEED,
     )
+    # requires_grad=True인 파라미터만 학습 대상입니다. 고정된 원본 W는 이 수에서 빠집니다.
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
     return model, {"rank": rank, "alpha": 2 * rank, "trainable_params": trainable, "total_params": total,
@@ -536,12 +558,14 @@ def add_lora(model, rank: int = LORA_RANK):
 def make_sft_dataset(rows, tokenizer, Dataset):
     """학습용 데이터 만들기: prompt(지시문+문서+질문)와 completion(정답 JSON + 종료 토큰)으로 나눕니다.
 
-    completion_only_loss=True와 함께 쓰면 정답 JSON 부분에서만 loss를 계산합니다.
+    completion_only_loss=True와 함께 쓰면 completion(정답 JSON·종료 토큰)에서만 loss를 계산합니다.
+    prompt도 예측에 쓰지만, prompt 자체를 맞히는 loss는 학습 목표에서 제외합니다.
     """
     examples = []
     for row in rows:
         prompt = prompt_text(tokenizer, row["question"], row["document"])
         completion = json.dumps(row["expected"], ensure_ascii=False) + tokenizer.eos_token
+        # 정답까지 포함한 학습 입력을 검사합니다. 잘라 버리면 정답 JSON이 중간에 끊길 수 있습니다.
         count = len(tokenizer(prompt + completion, add_special_tokens=False)["input_ids"])
         if count > MAX_SEQUENCE_LENGTH:
             raise ValueError(f"{row['id']}가 {count} 토큰입니다. {MAX_SEQUENCE_LENGTH}를 넘어 자동 절단하지 않고 중단합니다.")
@@ -553,12 +577,14 @@ def train_lora(model, tokenizer, splits: dict, lr: float = LEARNING_RATE, epochs
                out: Path | None = None) -> dict:
     """[3단계] train 데이터로 LoRA 행렬만 학습합니다. 매 스텝의 학습 loss와 epoch마다 검증 loss를 기록합니다.
 
-    한 스텝 = 예시 4개(배치 1 × 누적 4)의 순전파 → loss → 역전파 → AdamW 업데이트.
+    기본 설정에서는 배치 1개씩 기울기를 구해 4번 누적한 뒤 AdamW로 업데이트합니다.
+    여기서 스텝은 업데이트 횟수이며, 마지막 누적 묶음은 4개보다 작을 수 있습니다.
     돌려주는 값: loss 기록(log_history), 학습 시간, 실제 학습 정밀도, 어댑터 저장 위치 등.
     """
     from datasets import Dataset
 
     train_dataset = make_sft_dataset(splits["train"], tokenizer, Dataset)
+    # validation은 같은 형식으로 만들지만, 검증 loss 측정에만 쓰고 가중치 학습에는 쓰지 않습니다.
     validation_dataset = make_sft_dataset(splits["validation"], tokenizer, Dataset)
     info = fit_lora(model, tokenizer, train_dataset, validation_dataset, lr, epochs,
                     out or new_run_dir("train"), GRADIENT_ACCUMULATION)
@@ -566,7 +592,11 @@ def train_lora(model, tokenizer, splits: dict, lr: float = LEARNING_RATE, epochs
 
 
 def fit_lora(model, tokenizer, train_dataset, eval_dataset, lr, epochs, out: Path, accumulation: int) -> dict:
-    """LoRA 학습의 공통 부분(3단계와 6단계 과제가 함께 씀). SFTTrainer로 학습하고 기록·어댑터를 저장합니다."""
+    """3단계와 6단계가 함께 쓰는 학습 함수입니다. LoRA가 붙은 model과 학습·검증 데이터를 받습니다.
+
+    SFTTrainer 내부에서 예측 → loss → 역전파 → AdamW 업데이트가 실행됩니다.
+    model의 학습 가능한 가중치를 직접 바꾸고, 학습 기록과 저장 위치를 dict로 돌려줍니다.
+    """
     import torch
     from unsloth import FastLanguageModel
     from trl import SFTTrainer, SFTConfig
@@ -578,14 +608,14 @@ def fit_lora(model, tokenizer, train_dataset, eval_dataset, lr, epochs, out: Pat
         output_dir=str(out / "trainer"),
         learning_rate=lr, num_train_epochs=epochs,
         per_device_train_batch_size=BATCH_SIZE, per_device_eval_batch_size=1,
-        gradient_accumulation_steps=accumulation,
+        gradient_accumulation_steps=accumulation,        # 작은 배치 여러 번의 기울기를 모아 업데이트
         warmup_steps=1, lr_scheduler_type="linear",       # 첫 스텝은 서서히 시작, 이후 학습률을 점점 줄임
         optim="adamw_torch", weight_decay=0.0,            # AdamW. 이 실습은 weight decay를 쓰지 않음
         fp16=precision["fp16"], bf16=precision["bf16"],
         logging_steps=1, eval_strategy="epoch",           # 학습 loss는 매 스텝, 검증 loss는 epoch마다 기록
         save_strategy="no", seed=SEED, data_seed=SEED, report_to="none",
         dataloader_num_workers=0, dataset_num_proc=1, packing=False,
-        completion_only_loss=True,                        # 정답 JSON 부분에만 loss 적용
+        completion_only_loss=True,                      # 모범 답변과 종료 토큰에만 loss 적용(과제는 일반 문장)
     )
     # TRL 버전에 따라 길이 인자 이름이 다릅니다(max_length / max_seq_length).
     config_params = inspect.signature(SFTConfig).parameters
@@ -599,6 +629,7 @@ def fit_lora(model, tokenizer, train_dataset, eval_dataset, lr, epochs, out: Pat
     used = trainer.args
     train_precision = "bf16" if used.bf16 else "fp16" if used.fp16 else "fp32"
     start = time.perf_counter()
+    # 정답의 앞부분을 문맥으로 다음 정답 토큰을 예측하며, 매 토큰의 loss로 기울기를 계산합니다.
     train_result = trainer.train()                        # ← 실제 학습. max_steps를 쓰지 않으므로 epochs가 학습량을 정함
     seconds = time.perf_counter() - start
     history = list(trainer.state.log_history)
@@ -608,9 +639,10 @@ def fit_lora(model, tokenizer, train_dataset, eval_dataset, lr, epochs, out: Pat
     model.save_pretrained(str(out / "adapter"))           # LoRA 행렬만 저장(기본 모델 전체가 아님)
     tokenizer.save_pretrained(str(out / "adapter"))
     if getattr(trainer, "optimizer", None):
+        # 남은 기울기 텐서를 놓아 줍니다. 학습한 A·B의 값은 그대로 유지됩니다.
         trainer.optimizer.zero_grad(set_to_none=True)
     del trainer
-    free_gpu()
+    free_gpu()  # 학습 중 쓰던 미사용 메모리를 정리해도, 현재 model의 가중치는 계속 GPU에 남습니다.
     FastLanguageModel.for_inference(model)                # 다시 답변 생성 모드로
     return {"log_history": history, "metrics": train_result.metrics, "train_seconds": seconds,
             "steps": steps, "learning_rate": lr, "epochs": epochs, "train_precision": train_precision,
@@ -649,7 +681,11 @@ def experiment_row(label, split, lr, epochs, rank, train_info, lora_info, summar
 
 def save_session(base_results, lora_results, train_info, lora_info, lr=LEARNING_RATE, epochs=EPOCHS,
                  rank=LORA_RANK, base_guide=None, lora_guide=None, label="3~5단계 기본 설정") -> Path:
-    """[5단계] 노트북 2~4단계 결과를 한 폴더에 저장하고, 실험 기록(experiments.jsonl)에도 남깁니다."""
+    """[5단계] 이미 얻은 답변·점수·loss 기록을 저장하고 새 결과 폴더의 경로를 돌려줍니다.
+
+    추가 질문이나 학습은 하지 않습니다. 어댑터는 3단계에서 저장했으며 여기에는 그 위치를 기록합니다.
+    설정별 요약은 experiments.jsonl에 쌓아 나중에 비교합니다.
+    """
     out = new_run_dir("stepwise")
     save_json(out / "config.json", {**base_config(lr, epochs, rank, "validation"),
                                     "train_precision": train_info.get("train_precision"),
@@ -866,6 +902,7 @@ def run_custom_experiment(task: dict, lr: float = LEARNING_RATE, epochs: float =
 
     - 같은 문장으로 처음 실험할 때만 학습 전 기본 모델의 답도 함께 기록합니다(task["base_results"]).
     - keep_model=True면 학습한 모델을 돌려줘 6-4에서 자유롭게 질문할 수 있습니다.
+    - 매 실험마다 새 모델·새 어댑터로 시작하므로, 이전 실험에서 배운 내용이 누적되지 않습니다.
     """
     from datasets import Dataset
 
@@ -881,6 +918,7 @@ def run_custom_experiment(task: dict, lr: float = LEARNING_RATE, epochs: float =
             print("학습 전 기본 모델의 답을 기록합니다(같은 문장으로는 처음 한 번만).", flush=True)
             task["base_results"] = custom_answers(model, tokenizer, task, mode="base")
         model, lora_info = add_lora(model, rank)
+        # 과제의 '시험' 질문은 epoch별 검증에도 씁니다. 이 질문의 loss로 가중치를 업데이트하지는 않습니다.
         train_info = fit_lora(model, tokenizer, make_custom_dataset(task["train"], tokenizer, Dataset),
                               make_custom_dataset(task["test"], tokenizer, Dataset),
                               lr, epochs, out, CUSTOM_ACCUMULATION)
@@ -898,6 +936,7 @@ def run_custom_experiment(task: dict, lr: float = LEARNING_RATE, epochs: float =
         experiment = {**row, "train": train_info, "lora_info": lora_info, "results": results,
                       "base_results": task["base_results"], "task": task}
         if keep_model:
+            # 자유 질문에 필요한 모델과 토크나이저를 함께 반환하므로 GPU 메모리도 유지합니다.
             experiment.update(model=model, tokenizer=tokenizer)
             keep = True
         return experiment

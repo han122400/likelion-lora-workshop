@@ -11,6 +11,9 @@ import html
 import json
 import math
 
+# 화면을 만드는 흐름: 결과 딕셔너리·목록 → *_html()로 HTML 생성 → _display()로 표시.
+# 모델이 만든 답변과 채점값을 전달받으므로, 카드를 다시 표시해도 모델을 다시 학습하거나 답변을 생성하지 않습니다.
+
 # 채점 지표의 화면 이름과 설명(train.METRICS와 같은 순서)
 METRIC_LABELS = {
     "format_ok": ("JSON 형식", "answer·evidence·status 세 필드의 JSON 하나인가"),
@@ -50,6 +53,8 @@ STYLE = """
 
 def _e(value) -> str:
     """HTML에 넣기 전에 특수문자를 안전하게 바꿉니다."""
+    # 질문이나 답변에 <, >, & 등이 있어도 HTML 태그가 아니라 원래 글자로 보이게 합니다.
+    # 예를 들어 모델이 <script>를 출력해도 화면에서 코드로 실행되지 않게 합니다.
     return html.escape("" if value is None else str(value))
 
 
@@ -67,6 +72,7 @@ def _badge(text, value) -> str:
 
 
 def _pct(x) -> str:
+    # 채점 비율 0.8은 화면에서 80%로 표시합니다. loss 값에는 이 변환을 적용하지 않습니다.
     return "–" if x is None else f"{100 * x:.0f}%"
 
 
@@ -80,6 +86,8 @@ def _mode_label(mode) -> str:
 
 def _display(html_text: str) -> None:
     """노트북 출력 칸에 HTML을 표시합니다(노트북 밖에서는 아무것도 하지 않음)."""
+    # IPython의 HTML 표시 기능에 공통 스타일과 카드 내용을 넘깁니다.
+    # *_html()은 문자열만 돌려주고, 실제 노트북 출력은 이 함수가 맡습니다.
     try:
         from IPython.display import HTML, display
     except ImportError:
@@ -121,6 +129,8 @@ def model_info_html(info: dict) -> str:
 # ── 2·4단계: 질문 하나의 입력·출력·채점 ─────────────────────────────
 def answer_card_html(r: dict) -> str:
     """질문 하나의 카드: 입력(질문·문서) → 모델 출력(원문) → 채점."""
+    # r에는 이미 생성한 raw_output과 각 지표의 True/False가 들어 있습니다.
+    # 기대 정답이 없는 자유 질문은 정답·근거를 맞혔다고 판단할 수 없어 JSON 형식만 표시합니다.
     title = f'{_mode_label(r.get("mode"))} 답변'
     if r.get("expected") is not None:
         checks = "".join(_badge(METRIC_LABELS[m][0], r.get(m)) for m in METRIC_LABELS)
@@ -157,6 +167,8 @@ def results_table_html(results: list[dict], title: str) -> str:
 
 def metrics_html(summaries: dict, title: str = "점수 요약") -> str:
     """지표별 막대그래프. summaries = {"base": {...}, "lora": {...}} 또는 {"기본 모델": {...}}."""
+    # 각 지표는 평가 문항 중 통과한 비율입니다. 예: 10문항 중 8개 통과 → 80% (8/10).
+    # 생성된 답변의 채점 결과를 요약한 값이며, 학습 중 기록한 loss나 모델의 확신도와는 다릅니다.
     rows = []
     for metric, (name, desc) in METRIC_LABELS.items():
         bars = []
@@ -177,6 +189,8 @@ def metrics_html(summaries: dict, title: str = "점수 요약") -> str:
 # ── 3단계: 학습 설정·LoRA 정보·학습 결과 ─────────────────────────────
 def settings_html(lr, epochs, rank, train_count, batch=1, accumulation=4) -> str:
     """학습 변수 3개와, 그로부터 계산되는 실제 학습 스텝 수."""
+    # batch개씩 처리한 기울기를 accumulation번 모은 뒤 한 번 업데이트합니다.
+    # 여기서 스텝은 질문 번호가 아니라 가중치 업데이트 횟수입니다.
     steps_per_epoch = math.ceil(train_count / (batch * accumulation))
     total_steps = math.ceil(steps_per_epoch * epochs)
     return (f'<div class="lv"><h3>이번 학습 설정</h3><table>'
@@ -203,6 +217,9 @@ def lora_info_html(info: dict) -> str:
 
 def loss_points(history: list[dict]) -> tuple[list, list]:
     """Trainer 기록에서 (스텝, 학습 loss)와 (스텝, 검증 loss) 목록을 뽑습니다."""
+    # 같은 기록 목록에서도 loss는 학습 데이터, eval_loss는 검증 데이터로 계산된 값입니다.
+    # 현재 실습은 학습 loss를 매 업데이트마다, 검증 loss를 각 epoch가 끝날 때 기록합니다.
+    # 그래프를 그릴 때 다시 평가하지 않고, 기록에 남아 있는 점만 가져옵니다.
     train = [(h["step"], float(h["loss"])) for h in history if "loss" in h and "step" in h]
     evals = [(h["step"], float(h["eval_loss"])) for h in history if "eval_loss" in h and "step" in h]
     return train, evals
@@ -215,6 +232,8 @@ def training_html(info: dict) -> str:
     last = train[-1][1] if train else None
     eval_text = " → ".join(f"{v:.3f}" for _, v in evals) or "–"
     trend = ""
+    # 처음과 마지막 기록의 방향만 보고 주의 문구를 보여 줍니다.
+    # 검증 loss가 올랐다는 사실만으로 과적합을 확정하지 않고 실제 답변도 함께 비교합니다.
     if len(evals) >= 2 and evals[-1][1] > evals[0][1] and last is not None and first is not None and last < first:
         trend = ('<div class="warn">학습 loss는 내려갔는데 검증 loss는 올라갔습니다. 학습 예시에 지나치게 맞춰지는 '
                  '<b>과적합 신호</b>일 수 있어요. 점이 적으므로 실제 답변과 함께 판단하세요.</div>')
@@ -232,6 +251,9 @@ def plot_loss(history: list[dict], title: str = "LoRA training loss"):
     import matplotlib.pyplot as plt
 
     train, evals = loss_points(history)
+    # 두 곡선 모두 x축은 업데이트 스텝입니다. 검증 점은 epoch 종료 시점의 스텝에 놓입니다.
+    # 검증 점 사이의 선은 흐름을 보기 위해 연결한 것이며, 중간마다 검증했다는 뜻은 아닙니다.
+    # loss는 낮을수록 학습 목표에 가까워지지만, 정답률이 몇 %인지 직접 알려 주는 값은 아닙니다.
     fig, ax = plt.subplots(figsize=(7.5, 3.4))
     if train:
         ax.plot(*zip(*train), marker="o", markersize=3, color="#ff7710", label="train loss (each step)")
@@ -248,6 +270,8 @@ def plot_loss(history: list[dict], title: str = "LoRA training loss"):
 
 # ── 5단계: 학습 전후 비교 ───────────────────────────────────────────
 def _key(r: dict):
+    # 학습 전후 목록의 순서가 달라도 같은 ID끼리 연결합니다.
+    # ID가 없는 직접 입력은 질문과 문서 ID 목록을 함께 비교 키로 씁니다.
     return r.get("id") or (r.get("question"), tuple(r.get("context_ids") or []))
 
 
@@ -257,8 +281,11 @@ def comparison_html(base_results: list[dict], lora_results: list[dict], title: s
     rows, counts = [], {"up": 0, "down": 0, "same": 0}
     for b in base_results:
         l = lora_by_key.get(_key(b))
+        # 짝이 없는 입력은 비교에서 제외합니다. 비교 전에는 같은 문항을 평가했는지 확인하세요.
         if l is None:
             continue
+        # 개선·악화는 종합 성공(형식·정답·근거·status 모두 통과)의 실패↔성공 변화입니다.
+        # 답변 문장이 달라졌거나 일부 지표만 좋아져도 종합 성공이 같으면 '= 그대로'로 집계됩니다.
         bs, ls = b.get("grounded_success"), l.get("grounded_success")
         if bs is None or ls is None:
             change, cls = "정답 없음", "same"
@@ -285,6 +312,8 @@ def comparison_html(base_results: list[dict], lora_results: list[dict], title: s
 # ── 6단계: 실험 기록과 순위 ─────────────────────────────────────────
 def experiments_html(rows: list[dict], ranked: list[dict] | None = None) -> str:
     """실험 기록표. 검증 실험은 순위대로, 최종 test 평가는 아래에 따로 보여 줍니다."""
+    # 순서를 받지 않으면 검증 종합 성공이 높은 실험부터, 동률이면 검증 loss가 낮은 실험부터 정렬합니다.
+    # 순위는 기록된 실험끼리의 비교입니다. test 결과는 설정 선택에 쓰지 않도록 별도 표에 둡니다.
     if ranked is None:
         ranked = sorted([r for r in rows if r.get("split") == "validation" and r.get("lora")],
                         key=lambda r: (-r["lora"]["grounded_success"],
@@ -308,6 +337,8 @@ def experiments_html(rows: list[dict], ranked: list[dict] | None = None) -> str:
 
     head = ('<tr><th>순위</th><th>메모</th><th>학습률</th><th>epoch</th><th>rank</th><th>종합 성공</th><th>정답</th>'
             '<th>근거</th><th>응답 정책</th><th>검증 loss</th><th>기본 모델</th><th>학습 시간</th></tr>')
+    # 왼쪽 순위 1, 2, 3은 정렬된 행의 번호이며, LoRA 설정인 rank와는 다른 숫자입니다.
+    # 모든 비교값이 같아도 공동 순위를 계산하지 않고 행 순서대로 번호를 붙입니다.
     body = "".join(line(i, r, best=(i == 1)) for i, r in enumerate(ranked, 1))
     tests = [r for r in rows if r.get("split") == "test"]
     test_body = "".join(line("test", r) for r in tests)
@@ -341,6 +372,8 @@ def custom_task_html(task: dict) -> str:
 
 
 def _custom_scores(results: list[dict]) -> dict:
+    # 이미 채점된 exact·leaked를 질문 종류별로 모아 비율을 냅니다.
+    # '관계없는 질문 보존'은 내 문장이 섞이지 않았다는 뜻이며, 그 답변의 사실 정확성을 채점한 값은 아닙니다.
     def ratio(rows, ok):
         return (sum(ok(r) for r in rows) / len(rows), len(rows)) if rows else (None, 0)
     return {
@@ -352,6 +385,8 @@ def _custom_scores(results: list[dict]) -> dict:
 
 def custom_result_html(experiment: dict) -> str:
     """과제 실험 결과: 점수 막대(기본 모델 vs LoRA) + 질문별 출력 비교."""
+    # 위 막대는 종류별 통과 비율이고, 아래 행의 '비슷한 정도'는 각 출력의 문자열 유사도입니다.
+    # 유사도가 높아도 정확 일치에 실패할 수 있으므로 ✔ 표시와 함께 읽습니다.
     lora, base = experiment["results"], experiment.get("base_results") or []
     lora_scores, base_scores = _custom_scores(lora), _custom_scores(base)
     bars = []
@@ -390,6 +425,9 @@ def custom_result_html(experiment: dict) -> str:
 
 def custom_experiments_html(rows: list[dict], ranked: list[dict] | None = None) -> str:
     """과제 실험 순위표(같은 문장으로 한 실험끼리)."""
+    # 과제 순서는 train.rank_custom_experiments()에서 받은 ranked를 그대로 사용합니다.
+    # ranked를 생략하면 입력 순서가 표시되므로, 순위 비교에는 정렬된 목록을 넘겨야 합니다.
+    # 순위의 1, 2, 3은 행 번호입니다. '처음 보는 질문 정확'의 %는 질문 c의 정확 일치 비율입니다.
     if not rows:
         return '<div class="lv"><h3>과제 실험 기록</h3><p class="sub">아직 이 문장으로 한 실험이 없습니다.</p></div>'
     ranked = ranked if ranked is not None else rows
@@ -420,7 +458,10 @@ def plain_answer_html(r: dict) -> str:
 
 
 # ── 화면에 표시하는 함수들(노트북에서 호출) ──────────────────────────
+# show_*()에는 앞서 얻은 결과를 넘깁니다. 표시한 카드를 변수에 저장하는 반환 함수는 아닙니다.
+# 같은 결과로 show_answer_card()와 show_results_table()을 모두 호출해도 추가 추론은 없습니다.
 def show_custom_task(task):
+    # 학생이 만든 출력 문장과 학습용·시험용 질문 구성을 보여 줍니다.
     _display(custom_task_html(task))
 
 
@@ -434,17 +475,21 @@ def show_custom_result(experiment):
 
 
 def show_custom_experiments(rows, ranked=None):
+    # 같은 문장으로 진행한 과제 실험의 설정과 점수를 나란히 보여 줍니다.
     _display(custom_experiments_html(rows, ranked))
 
 
 def show_plain_answer(result):
+    # 자유 질문·답변 원문·생성량·시간을 표시합니다. 기대 정답이 없어 점수표는 만들지 않습니다.
     _display(plain_answer_html(result))
 
 def show_data_overview(docs, splits):
+    # train·validation·test의 문항 수와 쓰임을 확인하는 표입니다.
     _display(data_overview_html(docs, splits))
 
 
 def show_model_info(info):
+    # 이미 불러온 모델의 이름·정밀도·메모리 정보를 보여 줍니다. 여기서 모델을 불러오지는 않습니다.
     _display(model_info_html(info))
 
 
@@ -457,6 +502,7 @@ def show_results_table(results, title):
 
 
 def show_metrics(summaries, title="점수 요약"):
+    # 저장된 채점 비율을 % 막대로 보여 줍니다. loss 그래프는 show_training()에서 표시합니다.
     _display(metrics_html(summaries, title))
 
 
@@ -465,11 +511,13 @@ def show_settings(lr, epochs, rank, train_count):
 
 
 def show_lora_info(info):
+    # 전체 파라미터 중 학습 가능한 비율과 어댑터가 붙은 층을 확인합니다.
     _display(lora_info_html(info))
 
 
 def show_training(info, title="LoRA training loss"):
     """학습 요약 카드 + loss 그래프."""
+    # 학습이 끝난 뒤 받은 기록을 그립니다. 이 함수를 다시 실행해도 추가 학습은 하지 않습니다.
     _display(training_html(info))
     if info.get("log_history"):
         import matplotlib.pyplot as plt
