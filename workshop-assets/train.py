@@ -45,7 +45,6 @@ from datetime import datetime
 # ── 고정 설정: 실험을 비교할 수 있도록 바꾸지 않는 값들 ──
 ROOT = Path(__file__).resolve().parent           # 이 파일이 있는 폴더(실습 폴더)
 OUTPUTS = ROOT / "outputs"                        # 실행 결과가 쌓이는 폴더
-EXPERIMENTS_FILE = OUTPUTS / "experiments.jsonl"  # 6단계 실험 기록(한 줄 = 실험 1번)
 MODEL_ID = "Qwen/Qwen3.5-2B"                      # 기본 모델(Hugging Face에서 내려받음)
 SEED = 3407                                       # 난수 시드: 같은 설정이면 같은 결과가 나오도록 고정
 MAX_SEQUENCE_LENGTH = 1024                        # 입력+정답의 최대 토큰 수(넘으면 자르지 않고 중단)
@@ -278,16 +277,21 @@ def last_value(history: list[dict], key: str):
     return float(values[-1]) if values else None
 
 
+def _experiments_file() -> Path:
+    """실험 기록 파일(한 줄 = 실험 1번). 결과 폴더 OUTPUTS를 바꾸면 함께 따라갑니다."""
+    return OUTPUTS / "experiments.jsonl"
+
+
 def record_experiment(row: dict) -> None:
-    """6단계 실험 결과 한 줄을 outputs/experiments.jsonl에 추가합니다."""
+    """실험 결과 한 줄을 outputs/experiments.jsonl에 추가합니다(5-4 저장, 명령줄 실행)."""
     OUTPUTS.mkdir(parents=True, exist_ok=True)
-    with EXPERIMENTS_FILE.open("a", encoding="utf-8") as file:
+    with _experiments_file().open("a", encoding="utf-8") as file:
         file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def load_experiments() -> list[dict]:
     """지금까지 기록한 실험 목록을 읽습니다."""
-    return read_jsonl(EXPERIMENTS_FILE) if EXPERIMENTS_FILE.exists() else []
+    return read_jsonl(_experiments_file()) if _experiments_file().exists() else []
 
 
 def rank_experiments(rows: list[dict]) -> list[dict]:

@@ -6,6 +6,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ASSETS = Path(__file__).resolve().parents[1] / "workshop-assets"
 sys.path.insert(0, str(ASSETS))
@@ -66,10 +67,14 @@ class AnswerKeyTokenizer:
 class FakeModel:
     device = "cpu"
 
+    def __init__(self):
+        self.generate_calls = 0
+
     def eval(self):
         pass
 
     def generate(self, **kwargs):
+        self.generate_calls += 1
         return FakeGenerated()
 
 
@@ -77,12 +82,11 @@ class NotebookFlowTests(unittest.TestCase):
     def setUp(self):
         self.docs, self.splits = train.load_data()
         self.tmp = tempfile.TemporaryDirectory()
-        self._outputs = (train.OUTPUTS, train.EXPERIMENTS_FILE)
+        self._outputs = train.OUTPUTS
         train.OUTPUTS = Path(self.tmp.name) / "outputs"
-        train.EXPERIMENTS_FILE = train.OUTPUTS / "experiments.jsonl"
 
     def tearDown(self):
-        train.OUTPUTS, train.EXPERIMENTS_FILE = self._outputs
+        train.OUTPUTS = self._outputs
         self.tmp.cleanup()
 
     def test_guide_matches_validation_rows(self):
@@ -172,26 +176,74 @@ class NotebookFlowTests(unittest.TestCase):
         self.assertFalse(any("wget" in src for src in code))
         self.assertTrue(all("#@title" in src for src in code), "웹 코드 블록 제목에 #@title을 씁니다")
 
-    def test_guide_cells_are_ready_to_run_for_both_models(self):
+    def test_required_evaluation_cells_generate_once_and_reuse_guide_results(self):
+        """통합 셀을 실제 실행하되 모델 로딩·출력만 대체합니다. GPU 학습 검증은 아닙니다."""
         nb = json.loads((ASSETS / "lora_workshop.ipynb").read_text(encoding="utf-8"))
         code = ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
-        for prefix, mode in (("2-2", "base"), ("4-1", "lora")):
-            cells = [c for c in code if c.startswith(f"#@title {prefix} ")]
-            self.assertEqual(len(cells), len(train.load_guide()))
-            for g, src in zip(train.load_guide(), cells):
-                self.assertIn(f'"{g["question"]}", "{g["document_id"]}", mode="{mode}"', src)
-                self.assertNotIn("#@param", src)  # 입력 칸 없이 실행만 하면 됨
+        guide_ids = [g["row_id"] for g in train.load_guide()]
+        validation_ids = [row["id"] for row in self.splits["validation"]]
+        self.assertEqual(len(guide_ids), 5)
+        self.assertEqual(len(validation_ids), 10)
+        model = FakeModel()
+        tokenizer = AnswerKeyTokenizer(self.splits)
+        env = {"lab": train, "view": view}
+
+        with patch.object(train, "load_base_model", return_value=(model, tokenizer, {"model": "fake-cpu-model"})) as loader:
+            for prefix, mode in (("2-1", "base"), ("4-1", "lora")):
+                with self.subTest(cell=prefix, mode=mode):
+                    cells = [src for src in code if re.match(rf"#@title {prefix}(?:\.|\s)", src)]
+                    self.assertEqual(len(cells), 1, "각 단계의 필수 셀은 하나여야 합니다")
+                    self.assertNotIn("#@param", cells[0])
+                    if mode == "lora":
+                        # GPU 학습 대신 완료 상태만 모사합니다. 4-1은 이 모델을 그대로 써야 합니다.
+                        env["train_info"] = {"fake_training": True}
+                    generated_before = model.generate_calls
+                    with (patch.object(train, "evaluate", wraps=train.evaluate) as evaluate,
+                          patch.object(view, "_display") as display,
+                          patch.object(view, "show_answer_card", wraps=view.show_answer_card) as cards,
+                          patch.object(view, "show_results_table", wraps=view.show_results_table) as tables,
+                          patch.object(view, "show_metrics", wraps=view.show_metrics) as metrics):
+                        exec(compile(cells[0], f"notebook-{prefix}", "exec"), env)
+
+                        loader.assert_called_once_with()  # 4-1에서 기본 모델을 다시 불러오지 않음
+                        self.assertIs(env["model"], model)
+                        self.assertIs(env["tokenizer"], tokenizer)
+                        evaluate.assert_called_once_with(model, tokenizer, split="validation", mode=mode)
+                        self.assertEqual(model.generate_calls - generated_before, 10)
+                        validation = env[f"{mode}_val"]
+                        guide = env[f"{mode}_guide"]
+                        self.assertEqual([row["id"] for row in validation], validation_ids)
+                        self.assertTrue(all(row["mode"] == mode for row in validation))
+                        self.assertTrue(all(row["dataset_split"] == "validation" for row in validation))
+                        self.assertEqual([row["id"] for row in guide], guide_ids)
+                        by_id = {row["id"]: row for row in validation}
+                        for row in guide:
+                            self.assertIs(row, by_id[row["id"]], "가이드가 검증 결과를 복사하거나 다시 생성했습니다")
+                            self.assertEqual(json.loads(row["raw_output"]), tokenizer.answers[row["question"]])
+                        self.assertEqual(cards.call_count, 5)
+                        for call, row in zip(cards.call_args_list, guide):
+                            self.assertIs(call.args[0], row)
+                        self.assertTrue(any(call.args[0] is guide for call in tables.call_args_list))
+                        self.assertTrue(any(call.args[0] is validation for call in tables.call_args_list))
+                        metrics.assert_called_once()
+                        self.assertEqual(metrics.call_args.args[0], train.summarize(validation))
+                        self.assertTrue(display.called)  # 실제 HTML 렌더링 경로도 실행됨
+                    if mode == "base":
+                        base_snapshot = json.dumps(env["base_val"], sort_keys=True)
+                    else:
+                        self.assertEqual(json.dumps(env["base_val"], sort_keys=True), base_snapshot)
 
     def test_skipped_cells_explain_which_cell_to_run_first(self):
         nb = json.loads((ASSETS / "lora_workshop.ipynb").read_text(encoding="utf-8"))
         code = {"".join(c["source"]).splitlines()[0]: "".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"}
-        cases = [("#@title 2-2 ①", {}, "1-4"),                                   # 세션 재시작 직후
-                 ("#@title 2-2 ①", {"lab": object()}, "2-1"),                    # 모델을 안 불러옴
-                 ("#@title 4-1 ①", {"lab": object(), "model": object()}, "3-3"),  # 학습을 안 함
-                 ("#@title 5-1", {"lab": object(), "base_guide": []}, "4-2")]
+        cases = [("#@title 2-1", {}, "1-4"),                                    # 세션 재시작 직후
+                 ("#@title 2-2", {"lab": object(), "view": object()}, "2-1"),  # 기본 모델을 안 불러옴
+                 ("#@title 4-1", {"lab": object(), "view": object(), "model": object(),
+                                   "tokenizer": object()}, "3-3"),             # 학습을 안 함
+                 ("#@title 5-1", {"lab": object(), "base_guide": []}, "4-1")]
         for head, env, expected in cases:
             src = next(v for k, v in code.items() if k.startswith(head))
-            with self.assertRaisesRegex(RuntimeError, f"먼저 {expected}"):
+            with self.subTest(cell=head), self.assertRaisesRegex(RuntimeError, f"먼저 {expected}"):
                 exec(compile(re.sub(r"^(\s*)[!%].*$", r"\1pass", src, flags=re.M), head, "exec"), dict(env))
 
 

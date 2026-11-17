@@ -129,7 +129,7 @@ export default function Resources({ open, onClose, onToast }) {
             <li>위의 <strong>실습 파일 ZIP</strong>을 내려받습니다(압축은 풀지 않아도 됩니다).</li>
             <li><strong>Colab 열기</strong>를 눌러 새 노트북을 엽니다(Google 계정 로그인 필요).</li>
             <li>런타임 → 런타임 유형 변경 → <strong>T4 GPU</strong>를 선택합니다.</li>
-            <li>실습 슬라이드(18~21)의 코드 블록을 순서대로 복사해 새 코드 셀에 붙여 넣고 실행합니다.</li>
+            <li>‘LoRA 실습과 비교’ 챕터의 코드를 순서대로 복사해 새 코드 셀에 붙여 넣고 실행합니다. 2단계와 4단계는 각각 필수 코드 블록 하나로 진행합니다.</li>
             <li>1-2 코드를 실행하면 나오는 ‘파일 선택’에서 lora-workshop.zip을 올립니다. 1-3 설치 뒤에는 세션을 다시 시작하고 1-4부터 이어 갑니다.</li>
           </ol>
           <p className="caption">
@@ -142,9 +142,9 @@ export default function Resources({ open, onClose, onToast }) {
           <h3>02. 노트북 6단계</h3>
           <ol>
             <li>환경 세팅: GPU · 패키지 버전 · 데이터 구성표</li>
-            <li>기본 모델에 질문: 웹 가이드 입력 5개 → 답변 카드 · 검증 점수</li>
+            <li>기본 모델에 질문: 2-1 한 번 실행 → 가이드 답변 카드 · 검증 점수</li>
             <li>기본 변수로 LoRA 학습: 학습 파라미터 비율 · loss 그래프</li>
-            <li>LoRA 모델에 같은 질문: 답변 카드 · 검증 점수</li>
+            <li>LoRA 모델에 같은 질문: 4-1 한 번 실행 → 가이드 답변 카드 · 검증 점수</li>
             <li>최종 비교: 질문별 ▲개선 · ▼악화 표 · 지표 막대 · test로 마지막 확인</li>
             <li>과제: 6-1 빈칸에 내 문장 3개 쓰기 → 변수 하나씩 바꿔 학습 → 정확히 출력되는 최소 설정 찾기</li>
           </ol>
